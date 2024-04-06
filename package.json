@@ -1,6 +1,7 @@
 {
   "name": "goomod.js",
   "version": "0.0.0",
+  "type": "module",
   "description": "generate goomods with javascript",
   "main": "dist/index.js",
   "scripts": {
@@ -17,10 +18,12 @@
   },
   "homepage": "https://github.com/jwklong/goomod.js#readme",
   "devDependencies": {
+    "@types/node": "^20.12.5",
     "typescript": "^5.4.4"
   },
   "dependencies": {
-    "archiver": "^7.0.1",
-    "fs": "^0.0.1-security"
+    "fs": "^0.0.1-security",
+    "xmlbuilder2": "^3.1.1",
+    "zip-a-folder": "^3.1.6"
   }
 }
