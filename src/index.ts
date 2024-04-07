@@ -87,19 +87,21 @@ export class Goomod {
 
             //copy everything from resources
             let resourcesXSL = XMLBuilder.create()
-                .ele("xsl:transform")
+                .ele("xsl:transform", {"version": "1.0", "xmlns:xsl": "http://www.w3.org/1999/XSL/Transform"})
                     .ele("xsl:template", {"match": "* | comment()"})
                         .ele("xsl:copy")
                             .ele("xsl:copy-of", {"select": "@*"}).up()
-                            .ele("xsl:apply-template").up()
+                            .ele("xsl:apply-templates").up()
                         .up()
                     .up()
             
             //write new resources
             resourcesXSL = resourcesXSL
                     .ele("xsl:template", {"match": "//Resources[@id='common']"})
-                        .ele("xsl:copy").up()
-                        .ele("SetDefaults", {"idprefix": "", "path": "./res/images"}).up()
+                        .ele("xsl:copy")
+                            .ele("xsl:copy-of", {"select": "@*"}).up()
+                            .ele("xsl:apply-templates").up()
+                            .ele("SetDefaults", {"idprefix": "", "path": "./res/images"}).up()
             for (var i of Object.keys(this.imageResources)) {
                 var v = this.imageResources[i]
                 resourcesXSL.ele("Image", {id: v, path: i}).up()
