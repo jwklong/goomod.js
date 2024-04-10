@@ -7,16 +7,59 @@ import { zip } from 'zip-a-folder'
 function ensureDirectoryExistence(filePath) {
     var dirname = path.dirname(filePath);
     if (fs.existsSync(dirname)) {
-      return true;
+        return true;
     }
     ensureDirectoryExistence(dirname);
     fs.mkdirSync(dirname);
-  }
+}
+
+// ENUMS
+
+export enum OCDType {
+    BallsCollected = "balls",
+    Moves = "moves",
+    TimeSpent = "time"
+}
+
+export enum GoomodType {
+    Generic = "mod",
+    Levels = "level"
+}
+
+// LEVEL
+
+type LevelOCD = {
+    type: OCDType
+    amount: number
+}
+
+type LevelArgs = {
+    id: string
+    name?: string
+    desc?: string
+    ocd?: LevelOCD
+}
+
+export class Level {
+    id: string
+    name: string
+    desc: string
+    ocd?: LevelOCD
+
+    constructor(args: LevelArgs) {
+        this.id = args.id
+        this.name = args.name || this.id
+        this.desc = args.desc || ""
+        this.ocd = this.ocd
+    }
+}
+
+// GOOMOD
 
 type GoomodArgs = {
     id: string,
     name: string,
-    type?: "level" | "mod",
+    type?: GoomodType
     version?: number[] & [number], //ensure length of 1
     desc: string,
     author: string
@@ -34,6 +77,8 @@ export class Goomod {
 
     #imageResourcePath: string
     imageResources?: {[key: string]: string}
+
+    #levels: Level[] = []
 
     constructor(dirname, args: GoomodArgs) {
         this.id = args.id
@@ -62,6 +107,16 @@ export class Goomod {
         this.#imageResourcePath = folderPath
     }
 
+    appendLevel(level: Level) {
+        this.#levels.push(level)
+    }
+
+    /* dunno if i REALLY want this, will keep in mind
+    get levels() {
+        return this.#levels
+    }
+    */
+
     async generate(filename: string = this.id, genName: string = this.id + "_goomod") {
         var genPath = path.join(this.#dirname, genName)
         var genEnd = path.join(this.#dirname, filename + ".goomod")
@@ -70,7 +125,7 @@ export class Goomod {
         fs.mkdirSync(genPath)
 
         //addin.xml
-        const addinXML = XMLBuilder.create()
+        let addinXML = XMLBuilder.create()
             .ele("addin", {"spec-version": "1.1"})
                 .ele("id").txt(this.id).up()
                 .ele("name").txt(this.name).up()
@@ -78,8 +133,27 @@ export class Goomod {
                 .ele("version").txt(this.version.join(".")).up()
                 .ele("description").txt(this.desc).up()
                 .ele("author").txt(this.author).up()
-            .end({prettyPrint: true})
-        fs.writeFileSync(path.join(genPath, 'addin.xml'), addinXML)
+
+        if (this.type === "level" && this.#levels.length >= 1) {
+            addinXML = addinXML
+                .ele("levels")
+            
+            for (var level of this.#levels) {
+                addinXML = addinXML
+                    .ele("level")
+                        .ele("dir").txt(level.id).up()
+                        .ele("name", {"text": level.name}).up()
+                        .ele("subtitle", {"text": level.desc}).up()
+                if (level.ocd !== undefined) {
+                    addinXML = addinXML
+                        .ele("ocd").txt(`${level.ocd}`).up()
+                }
+                addinXML = addinXML
+                    .up()
+            }
+        }
+        
+        fs.writeFileSync(path.join(genPath, 'addin.xml'), addinXML.end({prettyPrint: true}))
 
         //resources
         if (this.imageResources !== undefined) {
@@ -111,6 +185,24 @@ export class Goomod {
             var filename = path.join(genPath, 'merge', 'properties', 'resources.xml.xsl')
             ensureDirectoryExistence(filename)
             fs.writeFileSync(filename, resourcesXSL.end({prettyPrint: true}))
+        }
+
+        //levels
+        for (var level of this.#levels) {
+            var levelPath = path.join(genPath, 'compile', 'res', 'levels', level.id)
+            ensureDirectoryExistence(path.join(levelPath, 'nothing'))
+
+            //.level.xml
+            var levelXML = XMLBuilder.create()
+                .ele("level")
+
+            fs.writeFileSync(path.join(levelPath, `${level.id}.level.xml`), levelXML.end({prettyPrint: true}))
+
+            //.scene.xml
+            var sceneXML = XMLBuilder.create()
+                .ele("scene")
+
+            fs.writeFileSync(path.join(levelPath, `${level.id}.scene.xml`), sceneXML.end({prettyPrint: true}))
         }
 
         if (fs.existsSync(genEnd)) fs.rmSync(genEnd)
